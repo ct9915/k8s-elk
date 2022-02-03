@@ -1,0 +1,45 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: elasticsearch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      volumes:
+        - name: config
+          configMap:
+            name: elasticsearch-config
+            defaultMode: 420
+      initContainers:
+        - name: increase-vm-max-map
+          image: busybox
+          command:
+            - sysctl
+            - '-w'
+            - vm.max_map_count=262144
+          securityContext:
+            privileged: true
+      containers:
+        - name: elasticsearch
+          image: 'elasticsearch:7.16.3'
+          ports:
+            - containerPort: 9200
+              protocol: TCP
+            - containerPort: 9300
+              protocol: TCP
+          env:
+            - name: ES_JAVA_OPTS
+              value: '-Xms2g -Xmx2g'
+            - name: discovery.type
+              value: single-node
+          volumeMounts:
+            - name: config
+              mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+              subPath: elasticsearch.yml
